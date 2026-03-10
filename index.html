@@ -158,7 +158,9 @@
           }">${formatMessageText(msg.text)}</div>
         </div>
       `).join('');
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+      setTimeout(() => {
+        chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+      }, 50);
     }
 
     function renderProgress() {
@@ -307,23 +309,59 @@
       chatInput.value = '';
       updateUI();
 
+      // Inject hidden prompt for schedule data extraction
+      const payloadMessages = [...state.messages];
+      const lastMessage = payloadMessages[payloadMessages.length - 1];
+      payloadMessages[payloadMessages.length - 1] = {
+        ...lastMessage,
+        text: lastMessage.text + "\\n\\n[SYSTEM INSTRUCTION: 대화의 맥락에 따라 스케줄 데이터가 업데이트 되어야 한다면, 당신의 응답 마지막에 반드시 ```json\\n { \\\"phase\\\": \\\"현재단계(step1~step5)\\\", \\\"subjects\\\": [{\\\"id\\\":\\\"과목id\\\",\\\"name\\\":\\\"과목명\\\",\\\"targetScore\\\":90,\\\"gapDetail\\\":\\\"...\\\",\\\"plan\\\":\\\"...\\\"}], \\\"fixedSchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"title\\\":\\\"...\\\"}], \\\"studySchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"subjectId\\\":\\\"과목id\\\"}] } \\n``` 형태의 JSON 블록을 포함해서 출력하세요. 스케줄이 변경되지 않았다면 JSON 블록은 생략해도 됩니다. JSON 블록 외의 앞부분에는 학생에게 할 자연스러운 멘토의 답변을 작성하세요.]"
+      };
+
       try {
         const response = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: state.messages, currentData: state.appData })
+          body: JSON.stringify({ messages: payloadMessages, currentData: state.appData })
         });
         
         if (!response.ok) throw new Error('Network error');
         
         const data = await response.json();
         
-        state.messages.push({ role: 'ai', text: data.reply });
+        let replyText = data.reply || '';
+        let newData = null;
+        
+        // Extract JSON from reply text
+        const jsonMatch = replyText.match(/```json\\n?([\\s\\S]*?)\\n?```/);
+        if (jsonMatch) {
+          try {
+            newData = JSON.parse(jsonMatch[1].trim());
+            // Remove the JSON block from the reply text
+            replyText = replyText.replace(/```json\\n?[\\s\\S]*?\\n?```/, '').trim();
+          } catch(e) {
+            console.error("JSON parsing error", e);
+          }
+        }
+        
+        state.messages.push({ role: 'ai', text: replyText });
+        
+        let newPhase = data.phase || state.appData.phase;
+        let newSubjects = data.subjects || state.appData.subjects || [];
+        let newFixed = data.fixedSchedule || state.appData.fixedSchedule || [];
+        let newStudy = data.studySchedule || state.appData.studySchedule || [];
+        
+        if (newData) {
+          if (newData.phase) newPhase = newData.phase;
+          if (newData.subjects) newSubjects = newData.subjects;
+          if (newData.fixedSchedule) newFixed = newData.fixedSchedule;
+          if (newData.studySchedule) newStudy = newData.studySchedule;
+        }
+
         state.appData = {
-          phase: data.phase || state.appData.phase,
-          subjects: data.subjects || [],
-          fixedSchedule: data.fixedSchedule || [],
-          studySchedule: data.studySchedule || []
+          phase: newPhase,
+          subjects: newSubjects,
+          fixedSchedule: newFixed,
+          studySchedule: newStudy
         };
       } catch (error) {
         console.error(error);
