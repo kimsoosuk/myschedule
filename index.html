@@ -189,14 +189,14 @@
     // --- Helpers ---
     const parseTime = (timeStr) => {
       if (!timeStr) return 0;
-      
+
       // Try to match "HH:MM" or "HH시 MM분" formats
       const match = String(timeStr).match(/(\d{1,2})[:시\s]*(\d{0,2})/);
       if (!match) return 0;
-      
+
       let h = parseInt(match[1], 10) || 0;
       let m = parseInt(match[2], 10) || 0;
-      
+
       // Basic 12-hour format correction if it contains "오후" and is 1-11
       if (String(timeStr).includes('오후') && h >= 1 && h <= 11) {
         h += 12;
@@ -377,7 +377,7 @@
 
         fixedSchedule.filter(item => item.day === day).forEach(item => {
           if (!isValidBlock(item.start, item.end)) return;  // 유효하지 않은 시간 블록 패스
-          
+
           const duration = getDurationMin(item.start, item.end);
           const isShort = duration <= 30;
           const showTime = duration >= 120;
@@ -392,7 +392,7 @@
 
         studySchedule.filter(item => item.day === day).forEach(item => {
           if (!isValidBlock(item.start, item.end)) return;  // 유효하지 않은 시간 블록 패스
-          
+
           const sub = subjects.find(s => s.id === item.subjectId);
           let color = { bg: 'bg-indigo-500', border: 'border-indigo-600' };
           if (sub) {
