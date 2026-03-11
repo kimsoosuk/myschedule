@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,22 +11,82 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     @media print {
-      @page { margin: 1cm; size: A4 portrait; }
-      body { background: white; }
-      .print-hidden { display: none !important; }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      @page {
+        margin: 1cm;
+        size: A4 portrait;
+      }
+
+      body {
+        background: white;
+      }
+
+      .print-hidden {
+        display: none !important;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
     }
-    .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    @keyframes typingBounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0);
+        opacity: 0.5;
+      }
+
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #6366f1;
+      border-radius: 50%;
+      display: inline-block;
+      animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+
+    .typing-dot:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation-delay: -0.16s;
+    }
   </style>
 </head>
+
 <body class="bg-gray-50 font-sans text-gray-800 h-screen flex flex-col overflow-hidden selection:bg-indigo-100">
 
-  <header class="bg-white border-b border-gray-200 py-3 px-4 sm:px-6 flex justify-between items-center shrink-0 z-20 print-hidden">
+  <header
+    class="bg-white border-b border-gray-200 py-3 px-4 sm:px-6 flex justify-between items-center shrink-0 z-20 print-hidden">
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-full overflow-hidden border border-indigo-100 shadow-sm">
-         <img src="https://res.cloudinary.com/dms5vyofw/image/upload/v1766382489/%E1%84%80%E1%85%B5%E1%86%B7%E1%84%89%E1%85%AE%E1%84%89%E1%85%A5%E1%86%A8%E1%84%8B%E1%85%A1%E1%84%8B%E1%85%B5%E1%84%8F%E1%85%A9%E1%86%AB_%E1%84%85%E1%85%A1%E1%84%8B%E1%85%B5%E1%86%AB_%E1%84%8F%E1%85%A5%E1%86%AF%E1%84%85%E1%85%A51_snx7la.png" alt="Logo" class="w-full h-full object-cover" crossorigin="anonymous">
+        <img
+          src="https://res.cloudinary.com/dms5vyofw/image/upload/v1766382489/%E1%84%80%E1%85%B5%E1%86%B7%E1%84%89%E1%85%AE%E1%84%89%E1%85%A5%E1%86%A8%E1%84%8B%E1%85%A1%E1%84%8B%E1%85%B5%E1%84%8F%E1%85%A9%E1%86%AB_%E1%84%85%E1%85%A1%E1%84%8B%E1%85%B5%E1%86%AB_%E1%84%8F%E1%85%A5%E1%86%AF%E1%84%85%E1%85%A51_snx7la.png"
+          alt="Logo" class="w-full h-full object-cover" crossorigin="anonymous">
       </div>
       <h1 class="text-lg sm:text-xl font-black text-indigo-900 tracking-tight">수석의방 AI 스케줄러</h1>
     </div>
@@ -33,59 +94,59 @@
   </header>
 
   <main class="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
-    
-    <section class="w-full md:w-2/5 lg:w-1/3 flex flex-col h-[50vh] md:h-full bg-indigo-50/30 border-r border-gray-200 shrink-0 print-hidden">
+
+    <section
+      class="w-full md:w-2/5 lg:w-1/3 flex flex-col h-[50vh] md:h-full bg-indigo-50/30 border-r border-gray-200 shrink-0 print-hidden">
       <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"></div>
-      
-      <div id="loading-indicator" class="hidden flex justify-start px-4 pb-4">
-        <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mr-2 mt-1">
-          <img src="https://res.cloudinary.com/dms5vyofw/image/upload/v1766382489/%E1%84%80%E1%85%B5%E1%86%B7%E1%84%89%E1%85%AE%E1%84%89%E1%85%A5%E1%86%A8%E1%84%8B%E1%85%A1%E1%84%8B%E1%85%B5%E1%84%8F%E1%85%A9%E1%86%AB_%E1%84%85%E1%85%A1%E1%84%8B%E1%85%B5%E1%86%AB_%E1%84%8F%E1%85%A5%E1%86%AF%E1%84%85%E1%85%A51_snx7la.png" class="w-full h-full object-cover opacity-50">
-        </div>
-        <div class="bg-white p-3.5 rounded-2xl rounded-tl-sm border border-gray-100 shadow-sm flex items-center gap-2 text-gray-500 text-sm">
-          <i data-lucide="loader-2" class="animate-spin text-indigo-500 w-4 h-4"></i> 김수석 멘토 입력중...
-        </div>
-      </div>
 
       <div class="p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div class="flex gap-2 items-end">
           <textarea id="chat-input" placeholder="답변을 입력해주세요..." rows="1"
             class="flex-1 max-h-32 p-3 rounded-xl bg-gray-100 border-transparent focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 resize-none transition-all outline-none"></textarea>
-          <button id="send-btn" class="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 disabled:bg-gray-300 transition-colors shadow-md flex-shrink-0 h-[48px] w-[48px] flex justify-center items-center">
+          <button id="send-btn"
+            class="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 disabled:bg-gray-300 transition-colors shadow-md flex-shrink-0 h-[48px] w-[48px] flex justify-center items-center">
             <i data-lucide="arrow-right"></i>
           </button>
         </div>
       </div>
     </section>
 
-    <section class="flex-1 bg-gray-100 p-4 sm:p-6 overflow-y-auto h-[50vh] md:h-full custom-scrollbar print:p-0 print:bg-white print:overflow-visible relative" id="right-section">
+    <section
+      class="flex-1 bg-gray-100 p-4 sm:p-6 overflow-y-auto h-[50vh] md:h-full custom-scrollbar print:p-0 print:bg-white print:overflow-visible relative"
+      id="right-section">
       <div class="max-w-3xl mx-auto space-y-6 print:space-y-4">
-        
-        <div id="download-banner" class="hidden justify-between items-center bg-indigo-50 border border-indigo-100 p-4 rounded-xl print-hidden">
+
+        <div id="download-banner"
+          class="hidden justify-between items-center bg-indigo-50 border border-indigo-100 p-4 rounded-xl print-hidden">
           <div class="flex items-center gap-2 text-indigo-800 font-bold">
             <i data-lucide="sparkles" class="text-yellow-500"></i> 스케줄표가 완성되었습니다!
           </div>
-          <button id="download-btn" class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700">
+          <button id="download-btn"
+            class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700">
             <i data-lucide="file-text" id="dl-icon"></i> <span id="dl-text">PDF로 저장</span>
           </button>
         </div>
 
-        <div id="print-area" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none print:p-0 transition-all duration-0">
-          
+        <div id="print-area"
+          class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none print:p-0 transition-all duration-0">
+
           <div class="text-center mb-6 border-b pb-4">
-             <h1 class="text-2xl font-black text-indigo-900 mb-1">MY STUDY SCHEDULE</h1>
-             <p class="text-gray-500 italic text-sm">"꿈을 현실로 만드는 시작"</p>
+            <h1 class="text-2xl font-black text-indigo-900 mb-1">MY STUDY SCHEDULE</h1>
+            <p class="text-gray-500 italic text-sm">"꿈을 현실로 만드는 시작"</p>
           </div>
 
-          <div id="subjects-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6 print:grid-cols-3"></div>
+          <div id="subjects-container"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6 print:grid-cols-3"></div>
 
-          <div id="empty-state" class="h-64 flex flex-col items-center justify-center text-gray-400 opacity-50 print-hidden">
-            <i data-lucide="calendar" class="w-16 h-16 mb-4"></i>
-            <p class="text-lg font-medium">김수석 멘토와 대화를 나누면</p>
+          <div id="empty-state"
+            class="h-64 flex flex-col items-center justify-center text-gray-400 opacity-50 print-hidden text-lg font-medium text-center gap-1">
+            <i data-lucide="calendar" class="w-16 h-16 mb-3"></i>
+            <p>김수석 선생님과 대화를 나누면</p>
             <p>여기에 스케줄표가 그려집니다.</p>
           </div>
 
           <div id="schedule-wrapper" class="hidden h-[600px] print:h-auto">
-             </div>
+          </div>
 
           <div id="footer-branding" class="hidden text-center mt-8 text-gray-400 text-xs font-medium tracking-widest">
             Created with 수석의방
@@ -106,7 +167,7 @@
 
     // --- State ---
     let state = {
-      messages: [{ role: 'ai', text: '안녕! 나는 너의 공부 스케줄을 짜줄 김수석 멘토야. 혼자 스케줄 짜기 막막했지? 나랑 대화하면서 하나씩 완성해보자. \n\n가장 먼저, 성적표를 받았을 때 저절로 미소가 지어질 기분 좋은 **과목과 목표 점수**를 1의 자리까지 정확하게 말해줄래? (예: 수학 94점)' }],
+      messages: [{ role: 'ai', text: '안녕! 나랑 편하게 대화만 나눠도 어느새 너에게 딱 맞는 일주일 스케줄표가 짠 하고 만들어질 거야. \n\n그럼 가장 먼저 어떤 과목의 스케줄을 짜보고 싶은지 말해줄래?' }],
       isLoading: false,
       isPrinting: false,
       appData: { phase: 'step1', subjects: [], fixedSchedule: [], studySchedule: [] }
@@ -116,7 +177,6 @@
     const chatContainer = document.getElementById('chat-container');
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
-    const loadingIndicator = document.getElementById('loading-indicator');
     const progressSteps = document.getElementById('progress-steps');
     const subjectsContainer = document.getElementById('subjects-container');
     const emptyState = document.getElementById('empty-state');
@@ -146,18 +206,33 @@
 
     // --- Render Functions ---
     function renderChat() {
-      chatContainer.innerHTML = state.messages.map(msg => `
+      let html = state.messages.map(msg => `
         <div class="flex ${msg.role === 'ai' ? 'justify-start' : 'justify-end'}">
           ${msg.role === 'ai' ? `
             <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mr-2 mt-1 shadow-sm border border-white">
               <img src="${KIM_SOOSUK_IMAGE_URL}" class="w-full h-full object-cover">
             </div>
           ` : ''}
-          <div class="max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm break-words whitespace-pre-wrap ${
-            msg.role === 'ai' ? 'bg-white text-gray-800 rounded-tl-sm border border-gray-100' : 'bg-indigo-600 text-white rounded-tr-sm'
-          }">${formatMessageText(msg.text)}</div>
+          <div class="max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm break-words whitespace-pre-wrap ${msg.role === 'ai' ? 'bg-white text-gray-800 rounded-tl-sm border border-gray-100' : 'bg-indigo-600 text-white rounded-tr-sm'
+        }">${formatMessageText(msg.text)}</div>
         </div>
       `).join('');
+
+      if (state.isLoading) {
+        html += `
+        <div class="flex justify-start">
+          <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mr-2 mt-1 shadow-sm border border-white">
+            <img src="${KIM_SOOSUK_IMAGE_URL}" class="w-full h-full object-cover">
+          </div>
+          <div class="max-w-[85%] p-3.5 rounded-2xl bg-white text-gray-800 rounded-tl-sm border border-gray-100 shadow-sm flex items-center h-[42px]">
+            <div class="flex space-x-1">
+              <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      chatContainer.innerHTML = html;
       setTimeout(() => {
         chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
       }, 50);
@@ -166,11 +241,11 @@
     function renderProgress() {
       const phaseProgress = { 'step1': 1, 'step2': 2, 'step3': 3, 'step4_hours': 4, 'step4_fixed': 4, 'step4_study': 4, 'step5': 5 };
       const current = phaseProgress[state.appData.phase] || 1;
-      
+
       progressSteps.innerHTML = [1, 2, 3, 4, 5].map(num => `
         <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all
-          ${current === num ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-200' : 
-            current > num ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}">
+          ${current === num ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-200' :
+          current > num ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}">
           ${current > num ? '<i data-lucide="check-circle" class="w-3 h-3"></i>' : num}
         </div>
       `).join('');
@@ -200,14 +275,14 @@
 
     function renderSchedule() {
       const { fixedSchedule, studySchedule, phase, subjects } = state.appData;
-      
+
       if (fixedSchedule.length === 0 && studySchedule.length === 0 && !phase.includes('step4')) {
         scheduleWrapper.classList.add('hidden');
         return;
       }
-      
+
       scheduleWrapper.classList.remove('hidden');
-      
+
       // 베이스 그리드 생성
       let gridHtml = `
         <div class="flex flex-col h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden print:shadow-none print:border-none">
@@ -222,7 +297,7 @@
         gridHtml += `
           <div class="grid grid-cols-8 h-[20px] border-b border-gray-50 box-border">
             <div class="text-[9px] text-gray-400 text-center leading-[20px] border-r bg-gray-50/30">
-              ${i % 2 === 0 ? `${START_HOUR + i/2}:00` : ''}
+              ${i % 2 === 0 ? `${START_HOUR + i / 2}:00` : ''}
             </div>
             ${WEEK_DAYS.map(() => `<div class="border-r border-gray-50 last:border-0"></div>`).join('')}
           </div>
@@ -238,10 +313,21 @@
         return `top: ${startSlot * 20}px; height: ${slotsSpan * 20}px;`;
       };
 
+      // 블록 스타일 산출
+      const colors = [
+        { bg: 'bg-indigo-500', border: 'border-indigo-600' },
+        { bg: 'bg-pink-500', border: 'border-pink-600' },
+        { bg: 'bg-emerald-500', border: 'border-emerald-600' },
+        { bg: 'bg-amber-500', border: 'border-amber-600' },
+        { bg: 'bg-sky-500', border: 'border-sky-600' },
+        { bg: 'bg-purple-500', border: 'border-purple-600' },
+        { bg: 'bg-orange-500', border: 'border-orange-600' }
+      ];
+
       // 블록 렌더링
       WEEK_DAYS.forEach((day, dayIdx) => {
         let blocksHtml = '';
-        
+
         fixedSchedule.filter(item => item.day === day).forEach(item => {
           const duration = getDurationMin(item.start, item.end);
           const isShort = duration <= 30;
@@ -257,12 +343,17 @@
 
         studySchedule.filter(item => item.day === day).forEach(item => {
           const sub = subjects.find(s => s.id === item.subjectId);
+          let color = { bg: 'bg-indigo-500', border: 'border-indigo-600' };
+          if (sub) {
+            const subIdx = subjects.findIndex(s => s.id === item.subjectId);
+            color = colors[subIdx % colors.length];
+          }
           const duration = getDurationMin(item.start, item.end);
           const isShort = duration <= 30;
           const showTime = duration >= 120;
           blocksHtml += `
             <div style="${getItemStyle(item.start, item.end)}" 
-                 class="absolute w-[92%] left-[4%] rounded-md overflow-hidden flex border bg-indigo-500 text-white border-indigo-600 shadow-sm z-20 leading-tight ${isShort ? 'flex-row items-center px-1' : 'flex-col justify-start p-1'}">
+                 class="absolute w-[92%] left-[4%] rounded-md overflow-hidden flex border ${color.bg} text-white ${color.border} shadow-sm z-20 leading-tight ${isShort ? 'flex-row items-center px-1' : 'flex-col justify-start p-1'}">
               <div class="font-bold text-[9px] sm:text-[10px] ${isShort ? 'truncate w-full' : 'break-keep'}">${sub?.name || '공부'}</div>
               ${showTime ? `<div class="text-[8px] sm:text-[8.5px] opacity-90 mt-0.5 whitespace-normal">${formatDisplayTime(item.start)} - ${formatDisplayTime(item.end)}</div>` : ''}
             </div>
@@ -281,18 +372,16 @@
       renderProgress();
       renderSubjects();
       renderSchedule();
-      
-      if(state.appData.phase === 'step5') {
+
+      if (state.appData.phase === 'step5') {
         downloadBanner.classList.remove('hidden');
         downloadBanner.classList.add('flex');
       }
-      
-      if(state.isLoading) {
-        loadingIndicator.classList.remove('hidden');
+
+      if (state.isLoading) {
         sendBtn.disabled = true;
         chatInput.disabled = true;
       } else {
-        loadingIndicator.classList.add('hidden');
         sendBtn.disabled = false;
         chatInput.disabled = false;
         chatInput.focus();
@@ -314,7 +403,7 @@
       const lastMessage = payloadMessages[payloadMessages.length - 1];
       payloadMessages[payloadMessages.length - 1] = {
         ...lastMessage,
-        text: lastMessage.text + "\\n\\n[SYSTEM INSTRUCTION: 대화의 맥락에 따라 스케줄 데이터가 업데이트 되어야 한다면, 당신의 응답 마지막에 반드시 ```json\\n { \\\"phase\\\": \\\"현재단계(step1~step5)\\\", \\\"subjects\\\": [{\\\"id\\\":\\\"과목id\\\",\\\"name\\\":\\\"과목명\\\",\\\"targetScore\\\":90,\\\"gapDetail\\\":\\\"...\\\",\\\"plan\\\":\\\"...\\\"}], \\\"fixedSchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"title\\\":\\\"...\\\"}], \\\"studySchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"subjectId\\\":\\\"과목id\\\"}] } \\n``` 형태의 JSON 블록을 포함해서 출력하세요. 스케줄이 변경되지 않았다면 JSON 블록은 생략해도 됩니다. JSON 블록 외의 앞부분에는 학생에게 할 자연스러운 멘토의 답변을 작성하세요.]"
+        text: lastMessage.text + "\\n\\n[SYSTEM INSTRUCTION: \\n1. 너는 학생에게 스케줄을 짜주는 AI야. 스스로를 '멘토'라고 소개하거나 자기소개를 하지 마.\\n2. [3단계 계획짜기]에서 훌륭한 계획을 먼저 예시로 주지 말고, 학생에게 평소 학원을 얼마나 다니는지, 문제집은 어떤걸 푸는지 등 평소 공부 방식을 먼저 자연스럽고 간략하게 물어봐. \\n3. 학생이 평소 공부 방식을 답하면, 목표를 이루기 위해 무엇을 더 하면 좋을지 함께 생각하며 여러 방향의 맞춤 추천을 해줘. 학생이 이 중 선택할 수 있게 해야 해. \\n4. 3단계 구체적 계획이 정해진 후엔, 추가할 계획이 더 있는지 반드시 물어보고 넘어가.\\n5. 모든 스케줄을 배정한 후 마무리 멘트를 하기 전에, 스케줄을 추가할 '다른 과목'이 있는지 꼭 물어봐야 해. 있다면 다시 그 과목에 대해 1단계처럼 진행하고, 없다면 pdf를 다운받으라고 안내하며 세션을 마무리해.\\n6. 대화 맥락에 따라 스케줄 데이터가 업데이트 되어야 한다면, 당신의 응답 마지막에 반드시 ```json\\n { \\\"phase\\\": \\\"현재단계(step1~step5)\\\", \\\"subjects\\\": [{\\\"id\\\":\\\"과목id\\\",\\\"name\\\":\\\"과목명\\\",\\\"targetScore\\\":90,\\\"gapDetail\\\":\\\"...\\\",\\\"plan\\\":\\\"...\\\"}], \\\"fixedSchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"title\\\":\\\"...\\\"}], \\\"studySchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"subjectId\\\":\\\"과목id\\\"}] } \\n``` 형태의 JSON 블록을 포함해서 출력하세요. 스케줄이 변경되지 않았다면 JSON 블록은 생략해도 됩니다. JSON 블록 외의 앞부분에는 학생에게 할 자연스러운 답변을 작성하세요.]"
       };
 
       try {
@@ -323,33 +412,51 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: payloadMessages, currentData: state.appData })
         });
-        
+
         if (!response.ok) throw new Error('Network error');
-        
+
         const data = await response.json();
-        
+
         let replyText = data.reply || '';
         let newData = null;
-        
+
+        let jsonStr = '';
         // Extract JSON from reply text
-        const jsonMatch = replyText.match(/```json\\n?([\\s\\S]*?)\\n?```/);
+        const jsonMatch = replyText.match(/```json\n?([\s\S]*?)\n?```/) || replyText.match(/```json\\n?([\s\S]*?)\\n?```/);
+
         if (jsonMatch) {
+          jsonStr = jsonMatch[1];
+          replyText = replyText.replace(/```json[\\]?n?([\s\S]*?)[\\]?n?```/, '').trim();
+        } else {
+          // fallback: find { ... }
+          const startIdx = replyText.indexOf('{');
+          const endIdx = replyText.lastIndexOf('}');
+          if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+            const potentialJson = replyText.substring(startIdx, endIdx + 1);
+            if (potentialJson.includes('"phase"') || potentialJson.includes('"subjects"')) {
+              jsonStr = potentialJson;
+              replyText = replyText.replace(potentialJson, '').trim();
+            }
+          }
+        }
+
+        if (jsonStr) {
           try {
-            newData = JSON.parse(jsonMatch[1].trim());
-            // Remove the JSON block from the reply text
-            replyText = replyText.replace(/```json\\n?[\\s\\S]*?\\n?```/, '').trim();
-          } catch(e) {
+            // Remove lingering trailing commas common in LLM json output
+            jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1').trim();
+            newData = JSON.parse(jsonStr);
+          } catch (e) {
             console.error("JSON parsing error", e);
           }
         }
-        
+
         state.messages.push({ role: 'ai', text: replyText });
-        
+
         let newPhase = data.phase || state.appData.phase;
         let newSubjects = data.subjects || state.appData.subjects || [];
         let newFixed = data.fixedSchedule || state.appData.fixedSchedule || [];
         let newStudy = data.studySchedule || state.appData.studySchedule || [];
-        
+
         if (newData) {
           if (newData.phase) newPhase = newData.phase;
           if (newData.subjects) newSubjects = newData.subjects;
@@ -373,15 +480,15 @@
     }
 
     async function handleDownloadPDF() {
-      if(state.isPrinting) return;
-      
+      if (state.isPrinting) return;
+
       state.isPrinting = true;
-      
+
       // UI 강제 업데이트 (스크롤 영역 풀기)
       scheduleWrapper.classList.remove('h-[600px]');
       scheduleWrapper.classList.add('h-auto');
       renderSchedule(); // 높이 auto 반영을 위해 재렌더링
-      
+
       document.getElementById('dl-icon').setAttribute('data-lucide', 'loader-2');
       document.getElementById('dl-icon').classList.add('animate-spin');
       document.getElementById('dl-text').innerText = '저장 중...';
@@ -391,9 +498,9 @@
       setTimeout(async () => {
         try {
           const element = printArea;
-          const canvas = await html2canvas(element, { 
-            scale: 2, 
-            backgroundColor: '#ffffff', 
+          const canvas = await html2canvas(element, {
+            scale: 2,
+            backgroundColor: '#ffffff',
             useCORS: true,
             windowWidth: element.scrollWidth,
             windowHeight: element.scrollHeight,
@@ -402,9 +509,9 @@
           });
 
           const imgData = canvas.toDataURL('image/jpeg', 1.0);
-          const pdfWidth = 210; 
+          const pdfWidth = 210;
           const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-          
+
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
           pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
@@ -419,7 +526,7 @@
           scheduleWrapper.classList.add('h-[600px]');
           scheduleWrapper.classList.remove('h-auto');
           renderSchedule(); // 원상복구
-          
+
           document.getElementById('dl-icon').setAttribute('data-lucide', 'file-text');
           document.getElementById('dl-icon').classList.remove('animate-spin');
           document.getElementById('dl-text').innerText = 'PDF로 저장';
@@ -444,4 +551,5 @@
     updateUI();
   </script>
 </body>
+
 </html>
