@@ -213,7 +213,10 @@
 
     const formatDisplayTime = (timeStr) => timeStr ? timeStr.replace(/^0/, '') : '';
 
-    const formatMessageText = (text) => text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+    const formatMessageText = (text) => {
+      if (!text) return '';
+      return text.replace(/\\n/g, '<br>').replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+    };
 
     // --- Render Functions ---
     function renderChat() {
@@ -295,10 +298,10 @@
             ${sub.imagination ? `
             <div class="bg-yellow-50/70 border border-yellow-100 p-3 rounded-lg flex items-start gap-2 shadow-sm">
               <i data-lucide="sparkles" class="text-yellow-500 w-4 h-4 mt-0.5 shrink-0"></i>
-              <div class="text-xs text-gray-700 font-medium leading-relaxed break-keep">\n${sub.imagination.replace(/\\n/g, '<br>')}\n</div>
+              <div class="text-xs text-gray-700 font-medium leading-relaxed break-keep w-full overflow-hidden" style="word-break: keep-all;">${sub.imagination.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>
             </div>` : ''}
             ${sub.gapDetail ? `<div class="text-[13px] text-gray-800 font-medium break-keep px-1">🚩 ${sub.gapDetail}</div>` : ''}
-            ${sub.plan ? `<div class="text-[13px] text-gray-600 bg-gray-50 border border-gray-100 p-3 rounded-lg break-keep leading-relaxed">${sub.plan}</div>` : ''}
+            ${sub.plan ? `<div class="text-[13px] text-gray-600 bg-gray-50 border border-gray-100 p-3 rounded-lg break-keep leading-relaxed w-full overflow-hidden" style="word-break: keep-all;">${sub.plan.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>` : ''}
           </div>
         `).join('');
         emptyState.classList.add('hidden');
@@ -320,14 +323,14 @@
 
       scheduleWrapper.classList.remove('hidden');
 
-      // 베이스 그리드 생성
+      // 베이스 그리드 생성 (Iframe 환경을 고려해 최소 높이 min-h 명시 설정 추가)
       let gridHtml = `
-        <div class="flex flex-col h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden print:shadow-none print:border-none">
+        <div class="flex flex-col bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden print:shadow-none print:border-none" style="min-height: 500px;">
           <div class="grid grid-cols-8 border-b bg-gray-50 z-10 sticky top-0">
             <div class="p-2 text-center text-xs font-bold text-gray-500 border-r">시간</div>
             ${WEEK_DAYS.map(d => `<div class="p-2 text-center text-xs font-bold text-gray-700 border-r last:border-0">${d}</div>`).join('')}
           </div>
-          <div class="relative custom-scrollbar bg-white ${state.isPrinting ? 'h-auto overflow-visible' : 'flex-1 overflow-y-auto'}" id="grid-body">
+          <div class="relative custom-scrollbar bg-white ${state.isPrinting ? 'h-auto overflow-visible' : 'flex-1 overflow-y-auto min-h-[640px]'}" id="grid-body">
       `;
 
       for (let i = 0; i < TOTAL_SLOTS; i++) {
@@ -421,7 +424,7 @@
       renderSubjects();
       renderSchedule();
 
-      if (state.appData.phase === 'step5') {
+      if (state.appData.phase === 'completed') {
         downloadBanner.classList.remove('hidden');
         downloadBanner.classList.add('flex');
       }
@@ -461,37 +464,6 @@
         const data = await response.json();
 
         let replyText = data.reply || '';
-        let newData = null;
-
-        let jsonStr = '';
-        // Extract JSON from reply text
-        const jsonMatch = replyText.match(/```json\n?([\s\S]*?)\n?```/) || replyText.match(/```json\\n?([\s\S]*?)\\n?```/);
-
-        if (jsonMatch) {
-          jsonStr = jsonMatch[1];
-          replyText = replyText.replace(/```json[\\]?n?([\s\S]*?)[\\]?n?```/, '').trim();
-        } else {
-          // fallback: find { ... }
-          const startIdx = replyText.indexOf('{');
-          const endIdx = replyText.lastIndexOf('}');
-          if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-            const potentialJson = replyText.substring(startIdx, endIdx + 1);
-            if (potentialJson.includes('"phase"') || potentialJson.includes('"subjects"')) {
-              jsonStr = potentialJson;
-              replyText = replyText.replace(potentialJson, '').trim();
-            }
-          }
-        }
-
-        if (jsonStr) {
-          try {
-            // Remove lingering trailing commas common in LLM json output
-            jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1').trim();
-            newData = JSON.parse(jsonStr);
-          } catch (e) {
-            console.error("JSON parsing error", e);
-          }
-        }
 
         // Split messages by '|||' for multiple bubbles logic
         const splitReplies = replyText.split('|||').map(t => t.trim()).filter(Boolean);
@@ -504,24 +476,10 @@
           }
         }
 
-        let newPhase = data.phase || state.appData.phase;
-        let newSubjects = data.subjects || state.appData.subjects || [];
-        let newFixed = data.fixedSchedule || state.appData.fixedSchedule || [];
-        let newStudy = data.studySchedule || state.appData.studySchedule || [];
-
-        if (newData) {
-          if (newData.phase) newPhase = newData.phase;
-          if (newData.subjects) newSubjects = newData.subjects;
-          if (newData.fixedSchedule) newFixed = newData.fixedSchedule;
-          if (newData.studySchedule) newStudy = newData.studySchedule;
-        }
-
-        state.appData = {
-          phase: newPhase,
-          subjects: newSubjects,
-          fixedSchedule: newFixed,
-          studySchedule: newStudy
-        };
+        state.appData.phase = data.phase || state.appData.phase;
+        state.appData.subjects = data.subjects || state.appData.subjects || [];
+        state.appData.fixedSchedule = data.fixedSchedule || state.appData.fixedSchedule || [];
+        state.appData.studySchedule = data.studySchedule || state.appData.studySchedule || [];
       } catch (error) {
         console.error(error);
         state.messages.push({ role: 'ai', text: '미안해, 잠시 생각하느라 연결이 끊겼어. 다시 한 번 말해줄래?' });
