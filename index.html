@@ -135,8 +135,7 @@
             <p class="text-gray-500 italic text-sm">"꿈을 현실로 만드는 시작"</p>
           </div>
 
-          <div id="subjects-container"
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6 print:grid-cols-3"></div>
+          <div id="subjects-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 print:grid-cols-2"></div>
 
           <div id="empty-state"
             class="h-64 flex flex-col items-center justify-center text-gray-400 opacity-50 print-hidden text-lg font-medium text-center gap-1">
@@ -255,13 +254,18 @@
     function renderSubjects() {
       if (state.appData.subjects.length > 0) {
         subjectsContainer.innerHTML = state.appData.subjects.map(sub => `
-          <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="font-bold text-indigo-900 text-lg">${sub.name || '미정'}</h3>
-              ${sub.targetScore ? `<span class="text-sm text-indigo-700 font-bold">목표 ${sub.targetScore}점</span>` : ''}
+          <div class="bg-white p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col gap-3">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-2">
+              <h3 class="font-black text-indigo-900 text-lg">${sub.name || '미정'}</h3>
+              ${sub.targetScore ? `<span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold shadow-inner">목표 ${sub.targetScore}점</span>` : ''}
             </div>
-            ${sub.gapDetail ? `<div class="text-xs text-red-500 font-medium mb-2 break-keep">📝 ${sub.gapDetail}</div>` : ''}
-            ${sub.plan ? `<div class="text-xs text-gray-600 bg-gray-50 p-2 rounded-lg break-keep leading-relaxed">${sub.plan}</div>` : ''}
+            ${sub.imagination ? `
+            <div class="bg-yellow-50/70 border border-yellow-100 p-3 rounded-lg flex items-start gap-2 shadow-sm">
+              <i data-lucide="sparkles" class="text-yellow-500 w-4 h-4 mt-0.5 shrink-0"></i>
+              <div class="text-xs text-gray-700 font-medium leading-relaxed break-keep">\n${sub.imagination.replace(/\\n/g, '<br>')}\n</div>
+            </div>` : ''}
+            ${sub.gapDetail ? `<div class="text-[13px] text-red-500 font-medium break-keep px-1">🚨 ${sub.gapDetail}</div>` : ''}
+            ${sub.plan ? `<div class="text-[13px] text-gray-600 bg-gray-50 border border-gray-100 p-3 rounded-lg break-keep leading-relaxed">${sub.plan}</div>` : ''}
           </div>
         `).join('');
         emptyState.classList.add('hidden');
@@ -403,7 +407,20 @@
       const lastMessage = payloadMessages[payloadMessages.length - 1];
       payloadMessages[payloadMessages.length - 1] = {
         ...lastMessage,
-        text: lastMessage.text + "\\n\\n[SYSTEM INSTRUCTION: \\n1. 너는 학생에게 스케줄을 짜주는 AI야. 스스로를 '멘토'라고 소개하거나 자기소개를 하지 마.\\n2. [3단계 계획짜기]에서 훌륭한 계획을 먼저 예시로 주지 말고, 학생에게 평소 학원을 얼마나 다니는지, 문제집은 어떤걸 푸는지 등 평소 공부 방식을 먼저 자연스럽고 간략하게 물어봐. \\n3. 학생이 평소 공부 방식을 답하면, 목표를 이루기 위해 무엇을 더 하면 좋을지 함께 생각하며 여러 방향의 맞춤 추천을 해줘. 학생이 이 중 선택할 수 있게 해야 해. \\n4. 3단계 구체적 계획이 정해진 후엔, 추가할 계획이 더 있는지 반드시 물어보고 넘어가.\\n5. 모든 스케줄을 배정한 후 마무리 멘트를 하기 전에, 스케줄을 추가할 '다른 과목'이 있는지 꼭 물어봐야 해. 있다면 다시 그 과목에 대해 1단계처럼 진행하고, 없다면 pdf를 다운받으라고 안내하며 세션을 마무리해.\\n6. 대화 맥락에 따라 스케줄 데이터가 업데이트 되어야 한다면, 당신의 응답 마지막에 반드시 ```json\\n { \\\"phase\\\": \\\"현재단계(step1~step5)\\\", \\\"subjects\\\": [{\\\"id\\\":\\\"과목id\\\",\\\"name\\\":\\\"과목명\\\",\\\"targetScore\\\":90,\\\"gapDetail\\\":\\\"...\\\",\\\"plan\\\":\\\"...\\\"}], \\\"fixedSchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"title\\\":\\\"...\\\"}], \\\"studySchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"subjectId\\\":\\\"과목id\\\"}] } \\n``` 형태의 JSON 블록을 포함해서 출력하세요. 스케줄이 변경되지 않았다면 JSON 블록은 생략해도 됩니다. JSON 블록 외의 앞부분에는 학생에게 할 자연스러운 답변을 작성하세요.]"
+        text: lastMessage.text + "\\n\\n[SYSTEM INSTRUCTION: \\n" +
+          "1. 멘토라는 호칭 없이 자연스러운 대화체로 스케줄 작성을 돕는다.\\n" +
+          "2. [1.5단계 상상법]: 과목 선택 직후 3단계에 걸쳐 상상법을 진행하라. **가장 중요한 규칙: 질문은 무조건 한 번의 대답(턴)당 1개씩만 던져야 한다.** 한 번의 말풍선에서 두 개 이상의 질문을 하거나 다음 단계를 미리 묻지 마라.\\n" +
+          " - 첫 번째 답변 방식(말풍선 2개로 분리): 학생이 과목을 답하면 우선 그 과목을 마스터했을 때의 장점을 구체적이고 생생하게 설명하라 (예: 국어는 모든 학문의 근간이자 엄청난 독해력/표현력, 수학은 삶의 난이도를 낮추는 논리적 문제해결력, 사회는 세상을 꿰뚫어보고 이끄는 리더십 등). 이 설명 뒷부분에 '|||' 기호를 꼭 삽입하라. 그 기호 뒤에 첫 번째 상상 질문(Q1)을 작성하라.\\n" +
+          " - [Q1]: 절대 '시험 문제', '정적', '짜릿한 순간' 같은 과장된 표현이나 딱딱한 시험 상황을 가정하지 마라. 대신 일상이나 미래에서 그 과목의 지식을 활용해 무엇을 더 잘하게 되고 어떤 긍정적인 일이 생길지 구체적인 일상적/미래적 상황을 상상하도록 하는 질문을 던진다. (예: 국어라면 복잡한 글을 단숨에 이해하고 내 생각을 멋지게 표현하는 모습 등).\\n" +
+          " - [Q2]: 학생이 Q1에 답을 하면, 그 대답에 공감해주고 **오직 두 번째 질문 하나만** 던진다. 앞서 학생이 상상한 모습이 되었을 때 주변의 반응은 어떨지, 스스로 어떤 감정이 들지 구체적으로 묘사해보라는 식의 감정 관련 질문 한 가지만 던진다.\\n" +
+          " - [Q3]: 학생이 Q2에 답을 하면, 공감해주고 **오직 세 번째 질문 하나만** 던진다. 과목 설명과 학생의 앞선 답변을 종합하여 그 과목을 잘하게 되었을 때 좋아지는 점 하나를 더 확장해서 상상해보도록 질문한다.\\n" +
+          " - [목표점수 묻기]: 학생이 Q3에까지 모두 답을 마쳤을 때에만 비로소 비전을 요약해주고, 성적표를 받았을 때 기분 좋을 것 같은 점수를 1의 자리까지 구체적으로 질문한다. (이 질문도 앞선 Q1, Q2, Q3와 절대 섞어서 던지면 안 된다.)\\n" +
+          "3. [3단계 계획짜기]: **이 단계도 반드시 여러 번의 턴으로 나누어 질문하라.** \\n" +
+          " - 첫 번째 질문: 훌륭한 계획 예시를 무작정 주지 말고, 가장 먼저 학생에게 '평소에 학원은 얼마나 다니는지, 문제집은 어떤 걸 푸는지' 등 현재의 공부 방식과 상태를 묻는 질문만 던진다.\\n" +
+          " - 두 번째 질문: 학생이 자신의 방식을 답하면, 그에 맞춰 목표를 이루기 위해 어떤 공부를 더 하면 좋을지 **구체적인 맞춤 추천 방향들을 여러 개 제시**하고 학생이 그 중 선택하게 하거나, 본인만의 계획을 추가로 정해보도록 유도한다.\\n" +
+          " - 세 번째 질문: 학생이 계획을 선택/정하면, '추가할 계획이 더 있는지' 반드시 한 번 더 물어보고 넘어간다.\\n" +
+          "4. [스케줄 마무리 및 과목 추가 연동]: 모든 스케줄 배정 완료 후 '추가할 다른 과목'이 있는지 꼭 묻는다. **만약 학생이 새로운 과목을 추가하겠다고 답하면, 반드시 1.5단계(첫 설명과 Q1 질문)부터 다시 철저하게 똑같은 시퀀스로 시작해야 한다.** (다른 과목이라고 해서 상상법 단계를 건너뛰거나 요약해서 한 번에 물어보면 절대 안 된다.) 더 이상 없다고 하면 PDF 저장 안내를 한다.\\n" +
+          "5. 당신의 응답 마지막에 반드시 ```json\\n { \\\"phase\\\": \\\"현재단계(step1~step5)\\\", \\\"subjects\\\": [{\\\"id\\\":\\\"과목id\\\",\\\"name\\\":\\\"과목명\\\",\\\"imagination\\\":\\\"학생이 대답한 상상(기대되는 자신의 미래 모습과 감정 요약)\\\",\\\"targetScore\\\":90,\\\"gapDetail\\\":\\\"...\\\",\\\"plan\\\":\\\"...\\\"}], \\\"fixedSchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"title\\\":\\\"...\\\"}], \\\"studySchedule\\\": [{\\\"id\\\":\\\"...\\\",\\\"day\\\":\\\"월~일\\\",\\\"start\\\":\\\"HH:MM\\\",\\\"end\\\":\\\"HH:MM\\\",\\\"subjectId\\\":\\\"과목id\\\"}] } \\n``` 형태의 JSON 블록을 포함출력. 앞부분에는 대화만 출력. 상상법 단계를 지나 목표점수를 입력받았거나 계획을 짤 때 JSON의 subjects 배열 안의 imagination 항목을 절대 누락하지 말고 계속 포함해서 출력하라.]"
       };
 
       try {
@@ -450,7 +467,11 @@
           }
         }
 
-        state.messages.push({ role: 'ai', text: replyText });
+        // Split messages by '|||' for multiple bubbles logic
+        const splitReplies = replyText.split('|||').map(t => t.trim()).filter(Boolean);
+        splitReplies.forEach(txt => {
+          state.messages.push({ role: 'ai', text: txt });
+        });
 
         let newPhase = data.phase || state.appData.phase;
         let newSubjects = data.subjects || state.appData.subjects || [];
