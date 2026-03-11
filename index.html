@@ -167,6 +167,7 @@
     // --- State ---
     let state = {
       messages: [{ role: 'ai', text: '안녕! 나랑 편하게 대화만 나눠도 어느새 너에게 딱 맞는 일주일 스케줄표가 짠 하고 만들어질 거야. \n\n그럼 가장 먼저 어떤 과목의 스케줄을 짜보고 싶은지 말해줄래?' }],
+      pendingAiMessages: [],
       isLoading: false,
       isPrinting: false,
       appData: { phase: 'step1', subjects: [], fixedSchedule: [], studySchedule: [] }
@@ -231,11 +232,32 @@
         </div>`;
       }
 
+      if (state.pendingAiMessages && state.pendingAiMessages.length > 0 && !state.isLoading) {
+        html += `
+        <div class="flex justify-center my-4 animate-fade-in">
+          <button onclick="revealNextMessage()" class="flex items-center space-x-2 px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold transition-colors shadow-sm cursor-pointer hover:scale-105 active:scale-95 duration-200 border border-indigo-200">
+            <span>이어지는 이야기 보기</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 animate-bounce"></i>
+          </button>
+        </div>`;
+      }
+
       chatContainer.innerHTML = html;
+      if (window.lucide) {
+        window.lucide.createIcons({ root: chatContainer });
+      }
       setTimeout(() => {
         chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
       }, 50);
     }
+
+    window.revealNextMessage = function () {
+      if (state.pendingAiMessages && state.pendingAiMessages.length > 0) {
+        const nextMsg = state.pendingAiMessages.shift();
+        state.messages.push({ role: 'ai', text: nextMsg });
+        updateUI();
+      }
+    };
 
     function renderProgress() {
       const phaseProgress = { 'step1': 1, 'step2': 2, 'step3': 3, 'step4_hours': 4, 'step4_fixed': 4, 'step4_study': 4, 'step5': 5 };
@@ -382,7 +404,7 @@
         downloadBanner.classList.add('flex');
       }
 
-      if (state.isLoading) {
+      if (state.isLoading || (state.pendingAiMessages && state.pendingAiMessages.length > 0)) {
         sendBtn.disabled = true;
         chatInput.disabled = true;
       } else {
@@ -451,9 +473,14 @@
 
         // Split messages by '|||' for multiple bubbles logic
         const splitReplies = replyText.split('|||').map(t => t.trim()).filter(Boolean);
-        splitReplies.forEach(txt => {
-          state.messages.push({ role: 'ai', text: txt });
-        });
+        if (splitReplies.length > 0) {
+          state.messages.push({ role: 'ai', text: splitReplies[0] });
+          if (splitReplies.length > 1) {
+            state.pendingAiMessages = splitReplies.slice(1);
+          } else {
+            state.pendingAiMessages = [];
+          }
+        }
 
         let newPhase = data.phase || state.appData.phase;
         let newSubjects = data.subjects || state.appData.subjects || [];
