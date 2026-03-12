@@ -94,6 +94,7 @@
     .subject-card .imagination-box {
       min-height: 80px;
       padding: 14px !important;
+      padding-bottom: 18px !important;
     }
 
     .subject-card .target-score {
@@ -153,7 +154,8 @@
           </button>
         </div>
 
-        <div id="print-area"
+        <!-- PDF 페이지 1: 과목 정보 -->
+        <div id="print-area-page1"
           class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none print:p-0 transition-all duration-0">
 
           <div class="text-center mb-6 border-b pb-4">
@@ -170,11 +172,26 @@
             <p>여기에 스케줄표가 그려집니다.</p>
           </div>
 
+          <div id="footer-branding-page1"
+            class="hidden text-center mt-8 text-gray-400 text-xs font-medium tracking-wide">
+            © 2026. 수석의방. All rights reserved.
+          </div>
+        </div>
+
+        <!-- PDF 페이지 2: 일주일 계획표 -->
+        <div id="print-area-page2"
+          class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none print:p-0 transition-all duration-0">
+
+          <div id="schedule-header" class="hidden text-center mb-4 border-b pb-3">
+            <h2 class="text-xl font-black text-indigo-900 pdf-stable-title">📅 일주일 계획표</h2>
+          </div>
+
           <div id="schedule-wrapper" class="hidden h-[600px] print:h-auto">
           </div>
 
-          <div id="footer-branding" class="hidden text-center mt-8 text-gray-400 text-xs font-medium tracking-widest">
-            Created with 수석의방
+          <div id="footer-branding-page2"
+            class="hidden text-center mt-8 text-gray-400 text-xs font-medium tracking-wide">
+            © 2026. 수석의방. All rights reserved.
           </div>
         </div>
 
@@ -207,10 +224,13 @@
     const subjectsContainer = document.getElementById('subjects-container');
     const emptyState = document.getElementById('empty-state');
     const scheduleWrapper = document.getElementById('schedule-wrapper');
-    const footerBranding = document.getElementById('footer-branding');
+    const scheduleHeader = document.getElementById('schedule-header');
+    const footerBrandingPage1 = document.getElementById('footer-branding-page1');
+    const footerBrandingPage2 = document.getElementById('footer-branding-page2');
     const downloadBanner = document.getElementById('download-banner');
     const downloadBtn = document.getElementById('download-btn');
-    const printArea = document.getElementById('print-area');
+    const printAreaPage1 = document.getElementById('print-area-page1');
+    const printAreaPage2 = document.getElementById('print-area-page2');
 
     // --- Helpers ---
 
@@ -371,24 +391,24 @@
             
             <!-- 상상법 기록 (imagination) -->
             ${sub.imagination ? `
-            <div class="imagination-box bg-yellow-50/70 border border-yellow-100 rounded-lg flex items-start gap-2 shadow-sm" style="padding: 14px; min-height: 80px;">
+            <div class="imagination-box bg-yellow-50/70 border border-yellow-100 rounded-lg flex items-start gap-2 shadow-sm" style="padding: 14px; padding-bottom: 14px; min-height: 80px;">
               <i data-lucide="sparkles" class="text-yellow-500 w-4 h-4 mt-0.5 shrink-0"></i>
-              <div class="text-xs text-gray-700 font-medium w-full overflow-hidden pdf-stable-text" style="line-height: 1.7; word-break: keep-all;">${sub.imagination.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>
+              <div class="text-xs text-gray-700 font-medium w-full overflow-hidden pdf-stable-text" style="line-height: 1.8; word-break: keep-all;">${sub.imagination.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>
             </div>` : ''}
             
             <!-- 목표 갭 분석 -->
             ${sub.gapDetail ? `<div class="text-[13px] text-gray-800 font-medium px-1 pdf-stable-text" style="line-height: 1.6; word-break: keep-all;">🚩 ${sub.gapDetail}</div>` : ''}
             
             <!-- 학습 계획 -->
-            ${sub.plan ? `<div class="text-[13px] text-gray-600 bg-gray-50 border border-gray-100 p-3 rounded-lg w-full overflow-hidden pdf-stable-text" style="line-height: 1.7; word-break: keep-all;">${sub.plan.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>` : ''}
+            ${sub.plan ? `<div class="text-[13px] text-gray-600 bg-gray-50 border border-gray-100 p-3 rounded-lg w-full overflow-hidden pdf-stable-text" style="line-height: 1.8; padding-bottom: 14px; word-break: keep-all;">${sub.plan.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>` : ''}
           </div>
         `).join('');
         emptyState.classList.add('hidden');
-        footerBranding.classList.remove('hidden');
+        footerBrandingPage1.classList.remove('hidden');
       } else {
         subjectsContainer.innerHTML = '';
         emptyState.classList.remove('hidden');
-        footerBranding.classList.add('hidden');
+        footerBrandingPage1.classList.add('hidden');
       }
     }
 
@@ -407,10 +427,14 @@
 
       if (normalizedFixed.length === 0 && normalizedStudy.length === 0 && !phase.includes('step4')) {
         scheduleWrapper.classList.add('hidden');
+        scheduleHeader.classList.add('hidden');
+        footerBrandingPage2.classList.add('hidden');
         return;
       }
 
       scheduleWrapper.classList.remove('hidden');
+      scheduleHeader.classList.remove('hidden');
+      footerBrandingPage2.classList.remove('hidden');
 
       // 베이스 그리드 생성
       let gridHtml = `
@@ -613,36 +637,59 @@
       await new Promise(resolve => setTimeout(resolve, 200));
 
       try {
-        const element = printArea;
+        const { jsPDF } = window.jspdf;
 
-        // html2canvas 옵션 최적화
-        const canvas = await html2canvas(element, {
+        // html2canvas 공통 옵션
+        const canvasOptions = {
           scale: 2,
           backgroundColor: '#ffffff',
           useCORS: true,
           allowTaint: false,
           logging: false,
-          // 텍스트 렌더링 품질 향상
           letterRendering: true,
-          // 요소 크기 정확히 계산
-          windowWidth: element.scrollWidth,
-          windowHeight: element.scrollHeight,
-          scrollX: 0,
-          scrollY: 0,
-          // foreignObjectRendering 비활성화 (호환성)
           foreignObjectRendering: false,
-          // 이미지 스무딩
           imageTimeout: 15000,
           removeContainer: true
+        };
+
+        // 페이지 1 캡처: 과목 정보
+        const canvas1 = await html2canvas(printAreaPage1, {
+          ...canvasOptions,
+          windowWidth: printAreaPage1.scrollWidth,
+          windowHeight: printAreaPage1.scrollHeight,
+          scrollX: 0,
+          scrollY: 0
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdfWidth = 210;
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        // 페이지 2 캡처: 일주일 계획표
+        const canvas2 = await html2canvas(printAreaPage2, {
+          ...canvasOptions,
+          windowWidth: printAreaPage2.scrollWidth,
+          windowHeight: printAreaPage2.scrollHeight,
+          scrollX: 0,
+          scrollY: 0
+        });
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        // PDF 생성 (A4 크기)
+        const pdfWidth = 210;
+
+        // 페이지 1 높이 계산
+        const page1Height = (canvas1.height * pdfWidth) / canvas1.width;
+        // 페이지 2 높이 계산
+        const page2Height = (canvas2.height * pdfWidth) / canvas2.width;
+
+        // 두 페이지 중 더 큰 높이로 PDF 생성 (또는 각각 맞춤)
+        const pdf = new jsPDF('p', 'mm', [pdfWidth, Math.max(page1Height, 297)]);
+
+        // 페이지 1 추가
+        const imgData1 = canvas1.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData1, 'JPEG', 0, 0, pdfWidth, page1Height);
+
+        // 페이지 2 추가
+        pdf.addPage([pdfWidth, Math.max(page2Height, 297)]);
+        const imgData2 = canvas2.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(imgData2, 'JPEG', 0, 0, pdfWidth, page2Height);
+
         pdf.save('나만의_스케줄표.pdf');
 
       } catch (err) {
