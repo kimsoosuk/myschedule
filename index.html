@@ -75,6 +75,32 @@
     .typing-dot:nth-child(2) {
       animation-delay: -0.16s;
     }
+
+    /* PDF 렌더링 안정화를 위한 명시적 line-height */
+    .pdf-stable-text {
+      line-height: 1.6 !important;
+      letter-spacing: 0 !important;
+    }
+
+    .pdf-stable-title {
+      line-height: 1.4 !important;
+    }
+
+    /* 과목 카드 내 텍스트 안정화 */
+    .subject-card * {
+      box-sizing: border-box;
+    }
+
+    .subject-card .imagination-box {
+      min-height: 80px;
+      padding: 14px !important;
+    }
+
+    .subject-card .target-score {
+      line-height: 1.5 !important;
+      padding-top: 6px !important;
+      padding-bottom: 6px !important;
+    }
   </style>
 </head>
 
@@ -131,8 +157,8 @@
           class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none print:p-0 transition-all duration-0">
 
           <div class="text-center mb-6 border-b pb-4">
-            <h1 class="text-2xl font-black text-indigo-900 mb-1">MY STUDY SCHEDULE</h1>
-            <p class="text-gray-500 italic text-sm">"꿈을 현실로 만드는 시작"</p>
+            <h1 class="text-2xl font-black text-indigo-900 mb-1 pdf-stable-title">MY STUDY SCHEDULE</h1>
+            <p class="text-gray-500 italic text-sm pdf-stable-text">"꿈을 현실로 만드는 시작"</p>
           </div>
 
           <div id="subjects-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 print:grid-cols-2"></div>
@@ -187,27 +213,73 @@
     const printArea = document.getElementById('print-area');
 
     // --- Helpers ---
+
+    // 요일 정규화 함수: '월요일' -> '월', 'Monday' -> '월' 등
+    const normalizeDay = (dayStr) => {
+      if (!dayStr) return '';
+      const trimmed = String(dayStr).trim();
+      const dayMap = {
+        '월': '월', '월요일': '월', 'mon': '월', 'monday': '월',
+        '화': '화', '화요일': '화', 'tue': '화', 'tuesday': '화',
+        '수': '수', '수요일': '수', 'wed': '수', 'wednesday': '수',
+        '목': '목', '목요일': '목', 'thu': '목', 'thursday': '목',
+        '금': '금', '금요일': '금', 'fri': '금', 'friday': '금',
+        '토': '토', '토요일': '토', 'sat': '토', 'saturday': '토',
+        '일': '일', '일요일': '일', 'sun': '일', 'sunday': '일'
+      };
+      const lower = trimmed.toLowerCase();
+      if (dayMap[lower]) return dayMap[lower];
+      if (dayMap[trimmed]) return dayMap[trimmed];
+      // 첫 글자가 유효한 요일인지 확인
+      const firstChar = trimmed.charAt(0);
+      if (['월', '화', '수', '목', '금', '토', '일'].includes(firstChar)) return firstChar;
+      return trimmed;
+    };
+
     const parseTime = (timeStr) => {
       if (!timeStr) return 0;
 
-      // Try to match "HH:MM" or "HH시 MM분" formats
-      const match = String(timeStr).match(/(\d{1,2})[:시\s]*(\d{0,2})/);
-      if (!match) return 0;
+      const str = String(timeStr).trim();
 
-      let h = parseInt(match[1], 10) || 0;
-      let m = parseInt(match[2], 10) || 0;
-
-      // Basic 12-hour format correction if it contains "오후" and is 1-11
-      if (String(timeStr).includes('오후') && h >= 1 && h <= 11) {
-        h += 12;
+      // "HH:MM" 형식 우선 처리
+      const colonMatch = str.match(/^(\d{1,2}):(\d{2})$/);
+      if (colonMatch) {
+        let h = parseInt(colonMatch[1], 10);
+        let m = parseInt(colonMatch[2], 10);
+        return h * 60 + m;
       }
-      return h * 60 + m;
+
+      // "HH시 MM분" 또는 "HH시" 형식
+      const koreanMatch = str.match(/(\d{1,2})\s*시\s*(\d{0,2})\s*분?/);
+      if (koreanMatch) {
+        let h = parseInt(koreanMatch[1], 10) || 0;
+        let m = parseInt(koreanMatch[2], 10) || 0;
+        // 오후 처리
+        if (str.includes('오후') && h >= 1 && h <= 11) {
+          h += 12;
+        }
+        return h * 60 + m;
+      }
+
+      // 기타 숫자 추출 시도
+      const numMatch = str.match(/(\d{1,2})[:.\s]*(\d{0,2})/);
+      if (numMatch) {
+        let h = parseInt(numMatch[1], 10) || 0;
+        let m = parseInt(numMatch[2], 10) || 0;
+        if (str.includes('오후') && h >= 1 && h <= 11) {
+          h += 12;
+        }
+        return h * 60 + m;
+      }
+
+      return 0;
     };
 
     const getDurationMin = (startStr, endStr) => {
       const startMin = parseTime(startStr);
       let endMin = parseTime(endStr);
       if (endMin === 0 && startMin > 0) endMin = 24 * 60;
+      if (endMin < startMin) endMin += 24 * 60; // 자정 넘어가는 경우
       return endMin - startMin;
     };
 
@@ -290,18 +362,25 @@
     function renderSubjects() {
       if (state.appData.subjects.length > 0) {
         subjectsContainer.innerHTML = state.appData.subjects.map(sub => `
-          <div class="bg-white p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col gap-3">
-            <div class="flex justify-between items-center border-b border-gray-100 pb-2">
-              <h3 class="font-black text-indigo-900 text-lg">${sub.name || '미정'}</h3>
-              ${sub.targetScore ? `<span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold shadow-inner">목표 ${sub.targetScore}점</span>` : ''}
+          <div class="subject-card bg-white p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col gap-3">
+            <!-- 헤더: 과목명 + 목표점수 -->
+            <div class="flex justify-between items-start border-b border-gray-100 pb-2">
+              <h3 class="font-black text-indigo-900 text-lg pdf-stable-title" style="line-height: 1.4;">${sub.name || '미정'}</h3>
+              ${sub.targetScore ? `<span class="target-score text-indigo-700 text-sm font-bold whitespace-nowrap" style="line-height: 1.5;">목표 ${sub.targetScore}점</span>` : ''}
             </div>
+            
+            <!-- 상상법 기록 (imagination) -->
             ${sub.imagination ? `
-            <div class="bg-yellow-50/70 border border-yellow-100 p-3 rounded-lg flex items-start gap-2 shadow-sm">
+            <div class="imagination-box bg-yellow-50/70 border border-yellow-100 rounded-lg flex items-start gap-2 shadow-sm" style="padding: 14px; min-height: 80px;">
               <i data-lucide="sparkles" class="text-yellow-500 w-4 h-4 mt-0.5 shrink-0"></i>
-              <div class="text-xs text-gray-700 font-medium leading-relaxed break-keep w-full overflow-hidden" style="word-break: keep-all;">${sub.imagination.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>
+              <div class="text-xs text-gray-700 font-medium w-full overflow-hidden pdf-stable-text" style="line-height: 1.7; word-break: keep-all;">${sub.imagination.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>
             </div>` : ''}
-            ${sub.gapDetail ? `<div class="text-[13px] text-gray-800 font-medium break-keep px-1">🚩 ${sub.gapDetail}</div>` : ''}
-            ${sub.plan ? `<div class="text-[13px] text-gray-600 bg-gray-50 border border-gray-100 p-3 rounded-lg break-keep leading-relaxed w-full overflow-hidden" style="word-break: keep-all;">${sub.plan.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>` : ''}
+            
+            <!-- 목표 갭 분석 -->
+            ${sub.gapDetail ? `<div class="text-[13px] text-gray-800 font-medium px-1 pdf-stable-text" style="line-height: 1.6; word-break: keep-all;">🚩 ${sub.gapDetail}</div>` : ''}
+            
+            <!-- 학습 계획 -->
+            ${sub.plan ? `<div class="text-[13px] text-gray-600 bg-gray-50 border border-gray-100 p-3 rounded-lg w-full overflow-hidden pdf-stable-text" style="line-height: 1.7; word-break: keep-all;">${sub.plan.replace(/(?:\r\n|\r|\n|\\n)/g, '<br>')}</div>` : ''}
           </div>
         `).join('');
         emptyState.classList.add('hidden');
@@ -316,7 +395,17 @@
     function renderSchedule() {
       const { fixedSchedule, studySchedule, phase, subjects } = state.appData;
 
-      if (fixedSchedule.length === 0 && studySchedule.length === 0 && !phase.includes('step4')) {
+      // 데이터 정규화: day 값 통일
+      const normalizedFixed = (fixedSchedule || []).map(item => ({
+        ...item,
+        day: normalizeDay(item.day)
+      }));
+      const normalizedStudy = (studySchedule || []).map(item => ({
+        ...item,
+        day: normalizeDay(item.day)
+      }));
+
+      if (normalizedFixed.length === 0 && normalizedStudy.length === 0 && !phase.includes('step4')) {
         scheduleWrapper.classList.add('hidden');
         return;
       }
@@ -336,7 +425,7 @@
       for (let i = 0; i < TOTAL_SLOTS; i++) {
         gridHtml += `
           <div class="grid grid-cols-8 h-[20px] border-b border-gray-50 box-border">
-            <div class="text-[9px] text-gray-400 text-center leading-[20px] border-r bg-gray-50/30">
+            <div class="text-[9px] text-gray-400 text-center border-r bg-gray-50/30" style="line-height: 20px;">
               ${i % 2 === 0 ? `${START_HOUR + i / 2}:00` : ''}
             </div>
             ${WEEK_DAYS.map(() => `<div class="border-r border-gray-50 last:border-0"></div>`).join('')}
@@ -353,12 +442,12 @@
         return `top: ${startSlot * 20}px; height: ${slotsSpan * 20}px;`;
       };
 
-      // 블록 스타일 산출
-      // start/end가 유효하지 않으면 렌더링 생략
+      // 유효한 블록인지 확인
       const isValidBlock = (start, end) => {
         const s = parseTime(start);
         const e = parseTime(end);
-        return s > 0 && e > s;
+        // 시작 시간이 8시(480분) 이상이고, 종료가 시작보다 크면 유효
+        return s >= START_HOUR * 60 && (e > s || (e === 0 && s > 0));
       };
 
       const colors = [
@@ -375,23 +464,23 @@
       WEEK_DAYS.forEach((day, dayIdx) => {
         let blocksHtml = '';
 
-        fixedSchedule.filter(item => item.day === day).forEach(item => {
-          if (!isValidBlock(item.start, item.end)) return;  // 유효하지 않은 시간 블록 패스
+        normalizedFixed.filter(item => item.day === day).forEach(item => {
+          if (!isValidBlock(item.start, item.end)) return;
 
           const duration = getDurationMin(item.start, item.end);
           const isShort = duration <= 30;
           const showTime = duration >= 120;
           blocksHtml += `
             <div style="${getItemStyle(item.start, item.end)}" 
-                 class="absolute w-[92%] left-[4%] rounded-md overflow-hidden flex border bg-gray-600 text-white border-gray-700 shadow-sm z-10 leading-tight ${isShort ? 'flex-row items-center px-1' : 'flex-col justify-start p-1'}">
-              <div class="font-bold text-[9px] sm:text-[10px] ${isShort ? 'truncate w-full' : 'break-keep'}">${item.title}</div>
-              ${showTime ? `<div class="text-[8px] sm:text-[8.5px] opacity-90 mt-0.5 whitespace-normal">${formatDisplayTime(item.start)} - ${formatDisplayTime(item.end)}</div>` : ''}
+                 class="absolute w-[92%] left-[4%] rounded-md overflow-hidden flex border bg-gray-600 text-white border-gray-700 shadow-sm z-10 ${isShort ? 'flex-row items-center px-1' : 'flex-col justify-start p-1'}">
+              <div class="font-bold text-[9px] sm:text-[10px] ${isShort ? 'truncate w-full' : ''}" style="line-height: 1.3; word-break: keep-all;">${item.title}</div>
+              ${showTime ? `<div class="text-[8px] sm:text-[8.5px] opacity-90 mt-0.5 whitespace-normal" style="line-height: 1.2;">${formatDisplayTime(item.start)} - ${formatDisplayTime(item.end)}</div>` : ''}
             </div>
           `;
         });
 
-        studySchedule.filter(item => item.day === day).forEach(item => {
-          if (!isValidBlock(item.start, item.end)) return;  // 유효하지 않은 시간 블록 패스
+        normalizedStudy.filter(item => item.day === day).forEach(item => {
+          if (!isValidBlock(item.start, item.end)) return;
 
           const sub = subjects.find(s => s.id === item.subjectId);
           let color = { bg: 'bg-indigo-500', border: 'border-indigo-600' };
@@ -404,9 +493,9 @@
           const showTime = duration >= 120;
           blocksHtml += `
             <div style="${getItemStyle(item.start, item.end)}" 
-                 class="absolute w-[92%] left-[4%] rounded-md overflow-hidden flex border ${color.bg} text-white ${color.border} shadow-sm z-20 leading-tight ${isShort ? 'flex-row items-center px-1' : 'flex-col justify-start p-1'}">
-              <div class="font-bold text-[9px] sm:text-[10px] ${isShort ? 'truncate w-full' : 'break-keep'}">${sub?.name || '공부'}</div>
-              ${showTime ? `<div class="text-[8px] sm:text-[8.5px] opacity-90 mt-0.5 whitespace-normal">${formatDisplayTime(item.start)} - ${formatDisplayTime(item.end)}</div>` : ''}
+                 class="absolute w-[92%] left-[4%] rounded-md overflow-hidden flex border ${color.bg} text-white ${color.border} shadow-sm z-20 ${isShort ? 'flex-row items-center px-1' : 'flex-col justify-start p-1'}">
+              <div class="font-bold text-[9px] sm:text-[10px] ${isShort ? 'truncate w-full' : ''}" style="line-height: 1.3; word-break: keep-all;">${sub?.name || '공부'}</div>
+              ${showTime ? `<div class="text-[8px] sm:text-[8.5px] opacity-90 mt-0.5 whitespace-normal" style="line-height: 1.2;">${formatDisplayTime(item.start)} - ${formatDisplayTime(item.end)}</div>` : ''}
             </div>
           `;
         });
@@ -465,15 +554,23 @@
 
         let replyText = data.reply || '';
 
-        // Split messages by '|||' for multiple bubbles logic
-        const splitReplies = replyText.split('|||').map(t => t.trim()).filter(Boolean);
-        if (splitReplies.length > 0) {
-          state.messages.push({ role: 'ai', text: splitReplies[0] });
-          if (splitReplies.length > 1) {
-            state.pendingAiMessages = splitReplies.slice(1);
-          } else {
-            state.pendingAiMessages = [];
+        // 수정: useSplitBubble 플래그에 따라 말풍선 분리 여부 결정
+        if (data.useSplitBubble === true) {
+          // 상상법 부분 1에서만 분리
+          const splitReplies = replyText.split('|||').map(t => t.trim()).filter(Boolean);
+          if (splitReplies.length > 0) {
+            state.messages.push({ role: 'ai', text: splitReplies[0] });
+            if (splitReplies.length > 1) {
+              state.pendingAiMessages = splitReplies.slice(1);
+            } else {
+              state.pendingAiMessages = [];
+            }
           }
+        } else {
+          // 나머지는 ||| 를 줄바꿈으로 치환하여 한 말풍선에 출력
+          replyText = replyText.replace(/\|\|\|/g, '\n\n');
+          state.messages.push({ role: 'ai', text: replyText });
+          state.pendingAiMessages = [];
         }
 
         state.appData.phase = data.phase || state.appData.phase;
@@ -504,45 +601,65 @@
       document.getElementById('dl-text').innerText = '저장 중...';
       lucide.createIcons();
 
-      // DOM 업데이트 대기
-      setTimeout(async () => {
-        try {
-          const element = printArea;
-          const canvas = await html2canvas(element, {
-            scale: 2,
-            backgroundColor: '#ffffff',
-            useCORS: true,
-            windowWidth: element.scrollWidth,
-            windowHeight: element.scrollHeight,
-            scrollY: 0,
-            scrollX: 0
-          });
+      // 폰트 로딩 및 레이아웃 안정화를 위한 대기
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-          const imgData = canvas.toDataURL('image/jpeg', 1.0);
-          const pdfWidth = 210;
-          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      // 문서 폰트 로딩 완료 대기
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
 
-          const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
-          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-          pdf.save('나만의_스케줄표.pdf');
+      // 추가 레이아웃 안정화 대기
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-        } catch (err) {
-          console.error(err);
-          alert("PDF 저장 중 오류가 발생했어. 인쇄 기능을 대신 실행할게.");
-          window.print();
-        } finally {
-          state.isPrinting = false;
-          scheduleWrapper.classList.add('h-[600px]');
-          scheduleWrapper.classList.remove('h-auto');
-          renderSchedule(); // 원상복구
+      try {
+        const element = printArea;
 
-          document.getElementById('dl-icon').setAttribute('data-lucide', 'file-text');
-          document.getElementById('dl-icon').classList.remove('animate-spin');
-          document.getElementById('dl-text').innerText = 'PDF로 저장';
-          lucide.createIcons();
-        }
-      }, 500);
+        // html2canvas 옵션 최적화
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          // 텍스트 렌더링 품질 향상
+          letterRendering: true,
+          // 요소 크기 정확히 계산
+          windowWidth: element.scrollWidth,
+          windowHeight: element.scrollHeight,
+          scrollX: 0,
+          scrollY: 0,
+          // foreignObjectRendering 비활성화 (호환성)
+          foreignObjectRendering: false,
+          // 이미지 스무딩
+          imageTimeout: 15000,
+          removeContainer: true
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const pdfWidth = 210;
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save('나만의_스케줄표.pdf');
+
+      } catch (err) {
+        console.error(err);
+        alert("PDF 저장 중 오류가 발생했어. 인쇄 기능을 대신 실행할게.");
+        window.print();
+      } finally {
+        state.isPrinting = false;
+        scheduleWrapper.classList.add('h-[600px]');
+        scheduleWrapper.classList.remove('h-auto');
+        renderSchedule(); // 원상복구
+
+        document.getElementById('dl-icon').setAttribute('data-lucide', 'file-text');
+        document.getElementById('dl-icon').classList.remove('animate-spin');
+        document.getElementById('dl-text').innerText = 'PDF로 저장';
+        lucide.createIcons();
+      }
     }
 
     // --- Event Listeners ---
